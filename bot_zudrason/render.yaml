@@ -1,12 +1,12 @@
 services:
-  - type: web
-    name: zudrason-bot-service  # Укажите своё название сервиса
+  - type: worker
+    name: zudrason-bot-worker # Укажите своё название сервиса
     runtime: python
     buildCommand: |
       pip install -r requirements.txt
       python manage.py migrate
       python manage.py collectstatic --noinput
-    startCommand: gunicorn bot_zudrason.wsgi:application
+    startCommand: python manage.py runbot
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -19,5 +19,5 @@ services:
       - key: DEBUG
         value: "False"  # Для production
       - key: ALLOWED_HOSTS
-        value: "zudrason-bot-service.onrender.com"  # Замените на ваше имя сервиса
+        value: "zudrason-bot-worker.onrender.com"  # Замените на ваше имя сервиса
     plan: free
