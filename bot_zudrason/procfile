@@ -1,0 +1,2 @@
+web: gunicorn zudrason.wsgi:application
+worker: python manage.py runbot
