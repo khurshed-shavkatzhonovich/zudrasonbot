@@ -11,9 +11,13 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+
 import os
 from dotenv import load_dotenv
-load_dotenv()  # загружает переменные из .env
+import dj_database_url
+
+# Загружаем переменные окружения
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -90,11 +94,20 @@ WSGI_APPLICATION = 'bot_zudrason.wsgi.application'
 
 # Пример использования:
 SECRET_KEY = os.getenv('SECRET_KEY')
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        # ...
+        'NAME': os.getenv('POSTGRESQL_DBNAME'),
+        'USER': os.getenv('POSTGRESQL_USER'),
+        'PASSWORD': os.getenv('POSTGRESQL_PASSWORD'),
+        'HOST': os.getenv('POSTGRESQL_HOST'),
+        'PORT': os.getenv('POSTGRESQL_PORT'),
+        'OPTIONS': {
+            'connect_timeout': 5,  # Таймаут подключения 5 секунд
+            'sslmode': 'require',  # Обязательное использование SSL
+        },
+        'CONN_MAX_AGE': 300,  # Поддержка persistent connections
     }
 }
 
