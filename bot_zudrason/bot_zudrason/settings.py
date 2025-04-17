@@ -12,7 +12,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
-import dj_database_url
+from dotenv import load_dotenv
+load_dotenv()  # загружает переменные из .env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,7 +30,8 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
     'khurshed.tw1.ru',  # ваш домен
-    '94.198.223.74',    # IP сервера
+    '89.223.71.214',    # IP сервера
+    '154.194.53.225',   # ip db
     'localhost',        # для локального тестирования
     '127.0.0.1'         # для локального тестирования
 ]
@@ -85,12 +87,15 @@ WSGI_APPLICATION = 'bot_zudrason.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+
+# Пример использования:
+SECRET_KEY = os.getenv('SECRET_KEY')
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL'),
-        conn_max_age=600,
-        ssl_require=True  # Важно для Render!
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME'),
+        # ...
+    }
 }
 
 # Password validation
