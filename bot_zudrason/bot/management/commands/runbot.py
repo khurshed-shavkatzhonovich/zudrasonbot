@@ -1,5 +1,9 @@
 import sys
+from django.core.management.base import BaseCommand
 import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import django
 import asyncio
 from typing import Optional
@@ -42,6 +46,7 @@ dp.include_router(router)
 
 GROUP_ID = -1002665268326  # ID группы оператора
 COURIER_GROUP_ID = -1002648695686  # ID группы курьеров
+
 
 # ======================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
@@ -174,13 +179,13 @@ def set_delivery_message(order_id: int, message: str):
 @router.message(Command("start"))
 async def start(message: Message):
     await message.answer(
-        "🚀 Добро пожаловать в Zudrason! 📦\n"
+        "Добро пожаловать в Zudrason!\n"
         "Мы доставляем еду, лекарства, посылки и всё, что вам нужно.\n"
         "Выберите категорию, чтобы начать!",
         reply_markup=get_main_menu()
     )
 
-@router.message(F.text == "🏠 Главное меню")
+@router.message(F.text == "Главное меню")
 async def back_to_main(message: Message):
     await start(message)
 
