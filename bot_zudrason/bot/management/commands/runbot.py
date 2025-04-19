@@ -1,4 +1,5 @@
 # bot/management/commands/runbot.py
+# bot/management/commands/runbot.py
 import os
 import asyncio
 from typing import Optional
@@ -37,7 +38,7 @@ class Command(BaseCommand):
         asyncio.run(self.main())
 
     async def main(self):
-        # Инициализация бота
+        # Инициализация бота и диспетчера
         bot = Bot(token=TOKEN)
         storage = MemoryStorage()
         dp = Dispatcher(storage=storage)
@@ -45,9 +46,9 @@ class Command(BaseCommand):
         dp.include_router(router)
 
         # Константы
-        self.GROUP_ID = -1002665268326
-        self.COURIER_GROUP_ID = -1002648695686
-        self.PAYMENT_DETAILS = {
+        GROUP_ID = -1002665268326  # ID группы оператора
+        COURIER_GROUP_ID = -1002648695686  # ID группы курьеров
+        PAYMENT_DETAILS = {
             "card_number": "1234567890118038",
             "phone_number": "+992501070777"
         }
@@ -57,7 +58,6 @@ class Command(BaseCommand):
         # ======================
 
         def get_main_menu():
-            """Возвращает главное меню"""
             return ReplyKeyboardMarkup(
                 keyboard=[
                     [KeyboardButton(text="📦 Курьерские услуги")],
@@ -117,12 +117,10 @@ class Command(BaseCommand):
                 package_type=package_type,
                 status='pending'
             )
-            
             if photo:
                 order.photo.save(f"order_{user_id}_{order.id}.jpg", photo, save=False)
             if photo_file_id:
                 order.photo_file_id = photo_file_id
-            
             order.save()
             return order.id
 
@@ -180,8 +178,8 @@ class Command(BaseCommand):
         # ОСНОВНЫЕ КОМАНДЫ
         # ======================
 
-        @router.message(Command("start"))
-        async def start(message: Message):
+        # Обработчики должны быть объявлены как обычные функции, а затем зарегистрированы
+        async def start_handler(message: Message):
             await message.answer(
                 "🚀 Добро пожаловать в Zudrason! 📦\n"
                 "Мы доставляем еду, лекарства, посылки и всё, что вам нужно.\n"
@@ -189,83 +187,59 @@ class Command(BaseCommand):
                 reply_markup=get_main_menu()
             )
 
-        @router.message(F.text == "🏠 Главное меню")
-        async def back_to_main(message: Message):
-            await start(message)
+        async def back_to_main_handler(message: Message):
+            await start_handler(message)
 
-        # ======================
-        # ИНФОРМАЦИОННЫЕ КОМАНДЫ
-        # ======================
-
-        @router.message(F.text == "ℹ️ О нас")
-        async def about_us(message: Message):
+        async def about_us_handler(message: Message):
             await message.answer(
                 """🚀 Zudrason — это современный сервис курьерской доставки.
                 Мы работаем, чтобы ваши посылки доходили быстро и безопасно!""",
                 reply_markup=get_main_menu()
             )
 
-        @router.message(F.text == "🛵 Стать курьером")
-        async def become_courier(message: Message):
+        async def become_courier_handler(message: Message):
             await message.answer(
                 "Свяжитесь с нашим оператором: @khurshedboboev",
                 reply_markup=get_main_menu()
             )
 
-        # ======================
-        # ОФОРМЛЕНИЕ ЗАКАЗА
-        # ======================
-
-        @router.message(F.text == "📦 Курьерские услуги")
-        async def start_order(message: Message, state: FSMContext):
-            await message.answer(
-                "📍 Откуда забрать посылку?"
-            )
+        async def start_order_handler(message: Message, state: FSMContext):
+            await message.answer("📍 Откуда забрать посылку?")
             await state.set_state(OrderForm.from_address)
 
-        @router.message(OrderForm.from_address)
-        async def process_from_address(message: Message, state: FSMContext):
+        async def process_from_address_handler(message: Message, state: FSMContext):
             if message.text == "🏠 Главное меню":
-                await back_to_main(message)
+                await back_to_main_handler(message)
                 await state.clear()
                 return
                 
             await state.update_data(from_address=message.text)
-            await message.answer(
-                "📍 Куда доставить?"
-            )
+            await message.answer("📍 Куда доставить?")
             await state.set_state(OrderForm.to_address)
 
-        @router.message(OrderForm.to_address)
-        async def process_to_address(message: Message, state: FSMContext):
+        async def process_to_address_handler(message: Message, state: FSMContext):
             if message.text == "🏠 Главное меню":
-                await back_to_main(message)
+                await back_to_main_handler(message)
                 await state.clear()
                 return
                 
             await state.update_data(to_address=message.text)
-            await message.answer(
-                "📞 Укажите номер телефона получателя:"
-            )
+            await message.answer("📞 Укажите номер телефона получателя:")
             await state.set_state(OrderForm.phone)
 
-        @router.message(OrderForm.phone)
-        async def process_phone(message: Message, state: FSMContext):
+        async def process_phone_handler(message: Message, state: FSMContext):
             if message.text == "🏠 Главное меню":
-                await back_to_main(message)
+                await back_to_main_handler(message)
                 await state.clear()
                 return
                 
             await state.update_data(phone=message.text)
-            await message.answer(
-                "📦 Что за посылка? (Документы, еда, техника и т.д.)"
-            )
+            await message.answer("📦 Что за посылка? (Документы, еда, техника и т.д.)")
             await state.set_state(OrderForm.package_type)
 
-        @router.message(OrderForm.package_type)
-        async def process_package_type(message: Message, state: FSMContext):
+        async def process_package_type_handler(message: Message, state: FSMContext):
             if message.text == "🏠 Главное меню":
-                await back_to_main(message)
+                await back_to_main_handler(message)
                 await state.clear()
                 return
                 
@@ -275,6 +249,17 @@ class Command(BaseCommand):
                 reply_markup=get_back_to_menu_button()
             )
             await state.set_state(OrderForm.photo)
+
+        # Регистрация обработчиков
+        router.message(Command("start"))(start_handler)
+        router.message(F.text == "🏠 Главное меню")(back_to_main_handler)
+        router.message(F.text == "ℹ️ О нас")(about_us_handler)
+        router.message(F.text == "🛵 Стать курьером")(become_courier_handler)
+        router.message(F.text == "📦 Курьерские услуги")(start_order_handler)
+        router.message(OrderForm.from_address)(process_from_address_handler)
+        router.message(OrderForm.to_address)(process_to_address_handler)
+        router.message(OrderForm.phone)(process_phone_handler)
+        router.message(OrderForm.package_type)(process_package_type_handler)
 
         async def send_order_to_group(
             bot: Bot,
@@ -309,10 +294,10 @@ class Command(BaseCommand):
             else:
                 await bot.send_message(group_id, order_text, reply_markup=markup)
 
-        @router.message(OrderForm.photo, F.content_type.in_({ContentType.PHOTO, ContentType.TEXT}))
-        async def process_photo(message: Message, state: FSMContext):
+        # Объявляем функции-обработчики
+        async def process_photo_handler(message: Message, state: FSMContext):
             if message.text == "🏠 Главное меню":
-                await back_to_main(message)
+                await back_to_main_handler(message)
                 await state.clear()
                 return
                 
@@ -343,7 +328,6 @@ class Command(BaseCommand):
                 reply_markup=get_main_menu()
             )
 
-            # Отправляем в группу операторов
             await send_order_to_group(
                 bot=bot,
                 group_id=GROUP_ID,
@@ -356,44 +340,38 @@ class Command(BaseCommand):
 
             await state.clear()
 
-        @router.callback_query(F.data.startswith("set_price:"))
-        async def request_price_input(callback: CallbackQuery, state: FSMContext):
+        async def request_price_input_handler(callback: CallbackQuery, state: FSMContext):
             order_id = int(callback.data.split(":")[1])
             await state.update_data(order_id=order_id)
             await state.set_state("waiting_for_price")
             
-            await callback.message.answer(
-                f"Введите стоимость доставки для заказа #{order_id}:"
-            )
+            await callback.message.answer(f"Введите стоимость доставки для заказа #{order_id}:")
             await callback.answer()
 
-        @router.message(F.chat.id == GROUP_ID, F.text, StateFilter("waiting_for_price"))
-        async def process_price_input(message: Message, state: FSMContext):
+        async def process_price_input_handler(message: Message, state: FSMContext):
             try:
                 price = float(message.text)
                 if price <= 0:
-                    raise ValueError("Цена должна быть положительной",
-                reply_markup=get_main_menu())
+                    raise ValueError("Цена должна быть положительной")
                 
                 state_data = await state.get_data()
                 order_id = state_data.get('order_id')
                 
                 if not order_id:
-                    await message.answer("❌ Ошибка: не удалось определить заказ.",
-                reply_markup=get_main_menu())
+                    await message.answer("❌ Ошибка: не удалось определить заказ.", reply_markup=get_main_menu())
                     return
 
                 await set_order_price(order_id, price)
                 order = await get_order_by_id(order_id)
                 if not order:
-                    await message.answer("❌ Заказ не найден.",
-                reply_markup=get_main_menu())
+                    await message.answer("❌ Заказ не найден.", reply_markup=get_main_menu())
                     return
 
                 client_message = (
                     f"💰 Стоимость доставки: {price} сомони.\n\n"
                     f"⚠️ Отправитель гарантирует, что посылка не содержит запрещённых предметов.\n"
-                    f"Подтвердите заказ:")
+                    f"Подтвердите заказ:"
+                )
 
                 confirm_markup = ReplyKeyboardMarkup(
                     keyboard=[[KeyboardButton(text=f"✅ Подтвердить заказ")]],
@@ -414,12 +392,9 @@ class Command(BaseCommand):
                 await state.clear()
 
             except ValueError as e:
-                await message.answer(f"❌ Неверный формат цены: {str(e)}",
-                reply_markup=get_main_menu())
+                await message.answer(f"❌ Неверный формат цены: {str(e)}", reply_markup=get_main_menu())
 
-        @router.message(F.text == "✅ Подтвердить заказ")
-        async def confirm_order_handler(message: Message):
-            # Здесь должна быть логика обработки подтверждения заказа клиентом
+        async def confirm_order_handler_handler(message: Message):
             payment_markup = ReplyKeyboardMarkup(
                 keyboard=[
                     [KeyboardButton(text="💵 Наличные при получении")],
@@ -427,26 +402,9 @@ class Command(BaseCommand):
                 ],
                 resize_keyboard=True
             )
+            await message.answer("💳 Выберите способ оплаты:", reply_markup=payment_markup)
 
-            await message.answer(
-                "💳 Выберите способ оплаты:",
-                reply_markup=payment_markup
-            )
-
-        class PaymentForm(StatesGroup):
-            waiting_for_receipt = State()
-            confirm_payment = State()
-
-        # Добавляем эти константы в начало файла
-        PAYMENT_DETAILS = {
-            "card_number": "1234567890118038",
-            "phone_number": "+992501070777"
-        }
-
-        @router.message(F.text == "📱 Перевод на карту или онлайн-кошелёк")
-        async def online_payment(message: Message):
-            """Обработка выбора онлайн оплаты"""
-            # Отправляем реквизиты и QR-код (замените на реальный файл)
+        async def online_payment_handler(message: Message):
             payment_text = (
                 "💳 Реквизиты для оплаты:\n\n"
                 f"Номер карты: `{PAYMENT_DETAILS['card_number']}`\n"
@@ -454,45 +412,27 @@ class Command(BaseCommand):
                 "После оплаты, нажмите кнопку ниже и отправьте скриншот чека:"
             )
             
-            # Создаем кнопку для отправки чека
             receipt_markup = ReplyKeyboardMarkup(
                 keyboard=[[KeyboardButton(text="📤 Отправить чек оплаты")]],
                 resize_keyboard=True
             )
-            
-            # Отправляем текст с реквизитами
             await message.answer(payment_text, reply_markup=receipt_markup)
-            
-            # Здесь должна быть отправка реального QR-кода
-            # await message.answer_photo(photo=open('qr_code.jpg', 'rb'))
-            
-            # Устанавливаем состояние ожидания чека
 
-        @router.message(F.text == "📤 Отправить чек оплаты")
-        async def request_receipt(message: Message, state: FSMContext):
-            """Запрос чека об оплате"""
+        async def request_receipt_handler(message: Message, state: FSMContext):
             await message.answer("Пожалуйста, отправьте фото или документ с чеком:", reply_markup=ReplyKeyboardRemove())
             await state.set_state(PaymentForm.waiting_for_receipt)
 
-        @router.message(F.text == "💵 Наличные при получении")
-        async def cash_payment(message: Message):
-            """Обработка выбора наличной оплаты"""
+        async def cash_payment_handler(message: Message):
             try:
-                # Получаем последний заказ пользователя
-                order = await sync_to_async(
-                    Order.objects.filter(user_id=message.from_user.id).last
-                )()
+                order = await sync_to_async(Order.objects.filter(user_id=message.from_user.id).last)()
                 
                 if not order:
-                    await message.answer("❌ Не найден ваш заказ. Начните заново.",
-                        reply_markup=get_main_menu())
+                    await message.answer("❌ Не найден ваш заказ. Начните заново.", reply_markup=get_main_menu())
                     return
                 
-                # Обновляем статус заказа
                 order.status = 'waiting_courier'
                 await sync_to_async(order.save)()
                 
-                # Отправляем заказ в группу курьеров
                 await send_order_to_group(
                     bot=bot,
                     group_id=COURIER_GROUP_ID,
@@ -520,43 +460,26 @@ class Command(BaseCommand):
                     "❌ Произошла ошибка при обработке заказа. Попробуйте еще раз.",
                     reply_markup=get_main_menu()
                 )
-            
-            # Здесь можно добавить логику уведомления оператора
 
-        @router.message(PaymentForm.waiting_for_receipt, F.content_type.in_({ContentType.PHOTO, ContentType.DOCUMENT}))
-        async def process_receipt(message: Message, state: FSMContext):
-            """Обработка полученного чека"""
+        async def process_receipt_handler(message: Message, state: FSMContext):
             try:
-                # Получаем последний заказ пользователя
-                order = await sync_to_async(
-                    Order.objects.filter(user_id=message.from_user.id).last
-                )()
+                order = await sync_to_async(Order.objects.filter(user_id=message.from_user.id).last)()
                 
                 if not order:
-                    await message.answer("❌ Не найден ваш заказ. Начните заново.",
-                reply_markup=get_main_menu())
+                    await message.answer("❌ Не найден ваш заказ. Начните заново.", reply_markup=get_main_menu())
                     await state.clear()
                     return
 
-                # Формируем callback_data с user_id и order_id
                 callback_data_confirm = f"confirm_payment:{message.from_user.id}:{order.id}"
                 callback_data_reject = f"reject_payment:{message.from_user.id}:{order.id}"
                 
-                # Создаем кнопки для оператора
                 operator_markup = InlineKeyboardMarkup(inline_keyboard=[
                     [
-                        InlineKeyboardButton(
-                            text="✅ Подтвердить оплату", 
-                            callback_data=callback_data_confirm
-                        ),
-                        InlineKeyboardButton(
-                            text="❌ Отклонить оплату", 
-                            callback_data=callback_data_reject
-                        )
+                        InlineKeyboardButton(text="✅ Подтвердить оплату", callback_data=callback_data_confirm),
+                        InlineKeyboardButton(text="❌ Отклонить оплату", callback_data=callback_data_reject)
                     ]
                 ])
                 
-                # Формируем текст сообщения для оператора
                 operator_text = (
                     f"Чек об оплате:\n"
                     f"Заказ #{order.id}\n"
@@ -565,7 +488,6 @@ class Command(BaseCommand):
                     f"Имя: {message.from_user.full_name}"
                 )
                 
-                # Отправляем чек оператору
                 if message.content_type == ContentType.PHOTO:
                     await bot.send_photo(
                         GROUP_ID,
@@ -594,6 +516,16 @@ class Command(BaseCommand):
                     reply_markup=ReplyKeyboardRemove()
                 )
                 await state.clear()
+
+        # Регистрируем обработчики
+        router.message(OrderForm.photo, F.content_type.in_({ContentType.PHOTO, ContentType.TEXT}))(process_photo_handler)
+        router.callback_query(F.data.startswith("set_price:"))(request_price_input_handler)
+        router.message(F.chat.id == GROUP_ID, F.text, StateFilter("waiting_for_price"))(process_price_input_handler)
+        router.message(F.text == "✅ Подтвердить заказ")(confirm_order_handler_handler)
+        router.message(F.text == "📱 Перевод на карту или онлайн-кошелёк")(online_payment_handler)
+        router.message(F.text == "📤 Отправить чек оплаты")(request_receipt_handler)
+        router.message(F.text == "💵 Наличные при получении")(cash_payment_handler)
+        router.message(PaymentForm.waiting_for_receipt, F.content_type.in_({ContentType.PHOTO, ContentType.DOCUMENT}))(process_receipt_handler)
 
         # Добавляем новые константы
         COURIER_GROUP_ID = -1002648695686  # ID группы курьеров
@@ -638,8 +570,8 @@ class Command(BaseCommand):
             waiting_for_client_confirmation = State()
 
         # Модифицируем обработчик подтверждения оплаты
-        @router.callback_query(F.data.startswith("confirm_payment:"))
-        async def handle_payment_confirmation(callback: CallbackQuery):
+        # Объявляем функции-обработчики
+        async def handle_payment_confirmation_handler(callback: CallbackQuery):
             try:
                 _, user_id, order_id = callback.data.split(":")
                 user_id = int(user_id)
@@ -648,7 +580,7 @@ class Command(BaseCommand):
                 order = await sync_to_async(Order.objects.get)(id=order_id)
                 order.status = 'paid'
                 await sync_to_async(order.save)()
-                # Отправляем заказ в группу курьеров
+                
                 order_text = (
                     f"🚚 Новый заказ для доставки #{order.id}\n\n"
                     f"📍 Откуда: {order.from_address}\n"
@@ -682,90 +614,34 @@ class Command(BaseCommand):
                 print(f"Ошибка при подтверждении оплаты: {e}")
                 await callback.answer("❌ Произошла ошибка")
 
-                # Отправляем заказ в группу курьеров
-        async def send_order_to_courier(order: Order):
-            """Отправляет полную информацию о заказе курьеру"""
-            order_text = (
-                f"🚚 Заказ #{order.id}\n"
-                f"📍 Откуда: {order.from_address}\n"
-                f"📍 Куда: {order.to_address}\n"
-                f"📦 Тип: {order.package_type}\n"
-                f"💰 Сумма: {order.price} сомони\n"
-                f"📞 Телефон: {order.phone}"
-            )
-            
-            # Создаем кнопку для подтверждения прибытия
-            arrival_button = InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(
-                    text="📝 Сообщить время доставки клиенту",
-                    callback_data=f"courier_arrival:{order.id}"
-                )
-            ]])
-            
-            # Если есть фото - отправляем с фото (используем file_id если он сохранен)
-            if order.photo and hasattr(order.photo, 'file_id'):
-                try:
-                    await bot.send_photo(
-                        chat_id=order.courier_id,
-                        photo=order.photo.file_id,
-                        caption=order_text,
-                        reply_markup=arrival_button
-                    )
-                except Exception as e:
-                    print(f"Ошибка при отправке фото: {e}")
-                    # Если не удалось отправить фото, отправляем только текст
-                    await bot.send_message(
-                        chat_id=order.courier_id,
-                        text=order_text,
-                        reply_markup=arrival_button
-                    )
-            else:
-                await bot.send_message(
-                    chat_id=order.courier_id,
-                    text=order_text,
-                    reply_markup=arrival_button
-                )
-
-        # ======================
-        # ОБНОВЛЕННЫЕ ОБРАБОТЧИКИ
-        # ======================
-
-        @router.callback_query(F.data.startswith("courier_accept:"))
-        async def courier_accept_order(callback: CallbackQuery, state: FSMContext):
+        async def courier_accept_order_handler(callback: CallbackQuery, state: FSMContext):
             try:
                 order_id = int(callback.data.split(":")[1])
                 courier = callback.from_user
                 
-                # Получаем заказ
                 order = await get_order_by_id(order_id)
                 if not order:
                     await callback.answer("❌ Заказ не найден")
                     return
                     
-                # Проверяем, не принят ли уже заказ другим курьером
                 if order.status != 'paid':
                     await callback.answer("❌ Заказ уже принят другим курьером")
                     return
                 
-                # Сохраняем курьера в заказе
                 order = await assign_courier(
                     order_id=order_id,
                     courier_id=courier.id,
                     courier_username=courier.username
                 )
                 
-                # Удаляем кнопку "Принять" из сообщения в группе
                 try:
                     await callback.message.edit_reply_markup(reply_markup=None)
                 except Exception as e:
                     print(f"Ошибка при редактировании сообщения: {e}")
                 
                 await callback.answer("✅ Вы приняли заказ")
-                
-                # Отправляем полную информацию курьеру
                 await send_order_to_courier(order)
                 
-                # Уведомляем клиента
                 try:
                     await bot.send_message(
                         order.user_id,
@@ -780,8 +656,7 @@ class Command(BaseCommand):
                 print(f"Ошибка при принятии заказа курьером: {e}")
                 await callback.answer("❌ Произошла ошибка при принятии заказа")
 
-        @router.callback_query(F.data.startswith("courier_arrival:"))
-        async def courier_arrival(callback: CallbackQuery, state: FSMContext):
+        async def courier_arrival_handler(callback: CallbackQuery, state: FSMContext):
             order_id = int(callback.data.split(":")[1])
             await state.update_data(order_id=order_id)
             await callback.message.answer(
@@ -791,24 +666,20 @@ class Command(BaseCommand):
             await state.set_state(CourierStates.waiting_for_courier_message)
             await callback.answer()
 
-        @router.message(CourierStates.waiting_for_courier_message)
-        async def process_courier_message(message: Message, state: FSMContext):
+        async def process_courier_message_handler(message: Message, state: FSMContext):
             try:
                 state_data = await state.get_data()
                 order_id = state_data['order_id']
                 
-                # Обновляем заказ
                 order = await set_courier_message(order_id, message.text)
                 await update_order_status(order_id, 'in_progress')
                 
-                # Отправляем сообщение клиенту
                 await bot.send_message(
                     order.user_id,
                     f"📦 Курьер в пути!\n\n"
                     f"Сообщение курьера: {message.text}\n\n"
                 )
                 
-                # Отправляем кнопку курьеру для подтверждения доставки
                 await message.answer(
                     "Отлично! Клиент уведомлен. Когда доставите заказ, нажмите кнопку ниже:",
                     reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
@@ -824,8 +695,7 @@ class Command(BaseCommand):
                 await message.answer("❌ Произошла ошибка", reply_markup=get_main_menu())
                 await state.clear()
 
-        @router.callback_query(F.data.startswith("courier_delivered:"))
-        async def courier_delivered(callback: CallbackQuery, state: FSMContext):
+        async def courier_delivered_handler(callback: CallbackQuery, state: FSMContext):
             order_id = int(callback.data.split(":")[1])
             await state.update_data(order_id=order_id)
             await callback.message.answer(
@@ -835,16 +705,13 @@ class Command(BaseCommand):
             await state.set_state(CourierStates.waiting_for_delivery_message)
             await callback.answer()
 
-        @router.message(CourierStates.waiting_for_delivery_message)
-        async def process_delivery_message(message: Message, state: FSMContext):
+        async def process_delivery_message_handler(message: Message, state: FSMContext):
             try:
                 state_data = await state.get_data()
                 order_id = state_data['order_id']
                 
-                # Обновляем заказ (асинхронно)
                 order = await set_delivery_message(order_id, message.text)
                 
-                # Создаем клавиатуру для подтверждения
                 confirm_keyboard = InlineKeyboardMarkup(inline_keyboard=[[
                     InlineKeyboardButton(
                         text="✅ Подтвердить получение",
@@ -852,7 +719,6 @@ class Command(BaseCommand):
                     )
                 ]])
                 
-                # Отправляем сообщение клиенту
                 try:
                     await bot.send_message(
                         chat_id=order.user_id,
@@ -885,17 +751,14 @@ class Command(BaseCommand):
                 )
                 await state.clear()
 
-        @router.callback_query(F.data.startswith("client_confirm:"))
-        async def handle_client_confirmation(callback: CallbackQuery):
+        async def handle_client_confirmation_handler(callback: CallbackQuery):
             try:
                 order_id = int(callback.data.split(":")[1])
                 
-                # Получаем и обновляем заказ
                 order = await sync_to_async(Order.objects.get)(id=order_id)
                 order.status = 'delivered'
                 await sync_to_async(order.save)()
                 
-                # Уведомляем курьера
                 try:
                     await bot.send_message(
                         chat_id=order.courier_id,
@@ -905,7 +768,6 @@ class Command(BaseCommand):
                 except Exception as e:
                     print(f"Не удалось уведомить курьера: {e}")
                 
-                # Обновляем сообщение у клиента
                 await callback.message.edit_reply_markup(reply_markup=None)
                 await callback.message.answer(
                     "✅ Получение подтверждено! Спасибо, что выбрали наш сервис!\n\n"
@@ -925,20 +787,16 @@ class Command(BaseCommand):
                 print(f"Ошибка при подтверждении получения: {e}")
                 await callback.answer("❌ Произошла ошибка при подтверждении")
 
-
-        @router.callback_query(F.data.startswith("rate:"))
-        async def process_rating(callback: CallbackQuery, state: FSMContext):
+        async def process_rating_handler(callback: CallbackQuery, state: FSMContext):
             try:
                 _, rating, order_id = callback.data.split(":")
                 rating = int(rating)
                 order_id = int(order_id)
                 
-                # Сохраняем оценку
                 await sync_to_async(Order.objects.filter(id=order_id).update)(
                     client_score=rating
                 )
                 
-                # Предлагаем оставить отзыв
                 feedback_markup = InlineKeyboardMarkup(inline_keyboard=[
                     [
                         InlineKeyboardButton(text="📝 Оставить отзыв", callback_data=f"give_feedback:{order_id}"),
@@ -951,22 +809,19 @@ class Command(BaseCommand):
                     reply_markup=feedback_markup
                 )
                 
-                # Сохраняем order_id в состоянии
                 await state.update_data(order_id=order_id)
                 await state.set_state(FeedbackStates.waiting_for_feedback_choice)
-                
                 await callback.answer()
                 
             except Exception as e:
                 print(f"Ошибка при обработке оценки: {e}")
                 await callback.answer("❌ Произошла ошибка")
 
-        @router.callback_query(F.data.startswith("give_feedback:"), FeedbackStates.waiting_for_feedback_choice)
-        async def request_feedback(callback: CallbackQuery, state: FSMContext):
+        async def request_feedback_handler(callback: CallbackQuery, state: FSMContext):
             try:
                 await callback.message.edit_text(
                     "Пожалуйста, напишите ваш отзыв:",
-                    reply_markup=None  # Убираем клавиатуру
+                    reply_markup=None
                 )
                 await state.set_state(FeedbackStates.waiting_for_feedback_text)
                 await callback.answer()
@@ -974,8 +829,7 @@ class Command(BaseCommand):
                 print(f"Ошибка при запросе отзыва: {e}")
                 await callback.answer("❌ Произошла ошибка")
 
-        @router.callback_query(F.data.startswith("skip_feedback:"), FeedbackStates.waiting_for_feedback_choice)
-        async def skip_feedback(callback: CallbackQuery, state: FSMContext):
+        async def skip_feedback_handler(callback: CallbackQuery, state: FSMContext):
             try:
                 await callback.message.edit_text("Спасибо за вашу оценку!")
                 await state.clear()
@@ -984,13 +838,11 @@ class Command(BaseCommand):
                 print(f"Ошибка при пропуске отзыва: {e}")
                 await callback.answer("❌ Произошла ошибка")
 
-        @router.message(FeedbackStates.waiting_for_feedback_text)
-        async def save_feedback_text(message: Message, state: FSMContext):
+        async def save_feedback_text_handler(message: Message, state: FSMContext):
             try:
                 state_data = await state.get_data()
                 order_id = state_data['order_id']
                 
-                # Сохраняем отзыв
                 await sync_to_async(Order.objects.filter(id=order_id).update)(
                     client_feedback=message.text
                 )
@@ -1003,19 +855,30 @@ class Command(BaseCommand):
                 await message.answer("❌ Не удалось сохранить отзыв. Попробуйте позже.", reply_markup=get_main_menu())
                 await state.clear()
 
-        @router.message(F.text == "📞 Связаться с оператором")
-        async def contact_operator(message: Message):
-            """Обработка запроса связи с оператором"""
+        async def contact_operator_handler(message: Message):
             await message.answer(
                 "Для связи с оператором напишите @zudrason_operator\n"
                 "или позвоните по номеру +992123456789",
                 reply_markup=ReplyKeyboardRemove()
             )
 
-        @router.message(F.text == "🔄 Попробовать снова")
-        async def retry_payment(message: Message):
-            """Повторная попытка оплаты"""
-            await online_payment(message)
+        async def retry_payment_handler(message: Message):
+            await online_payment_handler(message)
+
+        # Регистрируем обработчики
+        router.callback_query(F.data.startswith("confirm_payment:"))(handle_payment_confirmation_handler)
+        router.callback_query(F.data.startswith("courier_accept:"))(courier_accept_order_handler)
+        router.callback_query(F.data.startswith("courier_arrival:"))(courier_arrival_handler)
+        router.message(CourierStates.waiting_for_courier_message)(process_courier_message_handler)
+        router.callback_query(F.data.startswith("courier_delivered:"))(courier_delivered_handler)
+        router.message(CourierStates.waiting_for_delivery_message)(process_delivery_message_handler)
+        router.callback_query(F.data.startswith("client_confirm:"))(handle_client_confirmation_handler)
+        router.callback_query(F.data.startswith("rate:"))(process_rating_handler)
+        router.callback_query(F.data.startswith("give_feedback:"), FeedbackStates.waiting_for_feedback_choice)(request_feedback_handler)
+        router.callback_query(F.data.startswith("skip_feedback:"), FeedbackStates.waiting_for_feedback_choice)(skip_feedback_handler)
+        router.message(FeedbackStates.waiting_for_feedback_text)(save_feedback_text_handler)
+        router.message(F.text == "📞 Связаться с оператором")(contact_operator_handler)
+        router.message(F.text == "🔄 Попробовать снова")(retry_payment_handler)
 
         async def main():
             """Основная асинхронная функция для запуска бота"""
