@@ -20,7 +20,7 @@ from django.core.files.base import ContentFile
 from asgiref.sync import sync_to_async
 from dotenv import load_dotenv
 
-from bot_zudrason.bot.models import Order
+from zudrasonbot.bot.models import Order
 
 load_dotenv()
 
